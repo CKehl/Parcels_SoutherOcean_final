@@ -23,6 +23,7 @@ import xarray as xr
 import pandas as pd
 warnings.simplefilter("ignore", category=xr.SerializationWarning)
 import dask
+from polyTEOS10_consts import *
 
 import datetime
 from argparse import ArgumentParser
@@ -355,67 +356,9 @@ def PolyTEOS10_bsq(particle, fieldset, time):
     Z = -particle.depth  # note: use negative depths!
     SA = fieldset.salinity[time, particle.depth, particle.lat, particle.lon]
     CT = fieldset.temperature[time, particle.depth, particle.lat, particle.lon]
-    rho_sw = 1023.6  # kg/m^3
-    g_const = 9.80665  # m/s^2
-    p0 = 1.01325  # bar; hPA = bar * 1000
 
-    SAu = 40 * 35.16504 / 35
-    CTu = 40
-    Zu = 1e4
-    deltaS = 32
-    R000 = 8.0189615746e+02
-    R100 = 8.6672408165e+02
-    R200 = -1.7864682637e+03
-    R300 = 2.0375295546e+03
-    R400 = -1.2849161071e+03
-    R500 = 4.3227585684e+02
-    R600 = -6.0579916612e+01
-    R010 = 2.6010145068e+01
-    R110 = -6.5281885265e+01
-    R210 = 8.1770425108e+01
-    R310 = -5.6888046321e+01
-    R410 = 1.7681814114e+01
-    R510 = -1.9193502195e+00
-    R020 = -3.7074170417e+01
-    R120 = 6.1548258127e+01
-    R220 = -6.0362551501e+01
-    R320 = 2.9130021253e+01
-    R420 = -5.4723692739e+00
-    R030 = 2.1661789529e+01
-    R130 = -3.3449108469e+01
-    R230 = 1.9717078466e+01
-    R330 = -3.1742946532e+00
-    R040 = -8.3627885467e+00
-    R140 = 1.1311538584e+01
-    R240 = -5.3563304045e+00
-    R050 = 5.4048723791e-01
-    R150 = 4.8169980163e-01
-    R060 = -1.9083568888e-01
-    R001 = 1.9681925209e+01
-    R101 = -4.2549998214e+01
-    R201 = 5.0774768218e+01
-    R301 = -3.0938076334e+01
-    R401 = 6.6051753097e+00
-    R011 = -1.3336301113e+01
-    R111 = -4.4870114575e+00
-    R211 = 5.0042598061e+00
-    R311 = -6.5399043664e-01
-    R021 = 6.7080479603e+00
-    R121 = 3.5063081279e+00
-    R221 = -1.8795372996e+00
-    R031 = -2.4649669534e+00
-    R131 = -5.5077101279e-01
-    R041 = 5.5927935970e-01
-    R002 = 2.0660924175e+00
-    R102 = -4.9527603989e+00
-    R202 = 2.5019633244e+00
-    R012 = 2.0564311499e+00
-    R112 = -2.1311365518e-01
-    R022 = -1.2419983026e+00
-    R003 = -2.3342758797e-02
-    R103 = -1.8507636718e-02
-    R013 = 3.7969820455e-01
     ss = math.sqrt((SA + deltaS) / SAu)
+    # ss = np.sqrt((SA + deltaS) / SAu)
     tt = CT / CTu
     zz = -Z / Zu
     rz3 = R013 * tt + R103 * ss + R003
@@ -426,7 +369,7 @@ def PolyTEOS10_bsq(particle, fieldset, time):
     particle.pressure = rho_sw * g_const * particle.depth + p0  # [bar]
 
 
-def create_CMEMS_fieldset(datahead, periodic_wrap, chunk_level=0, anisotropic_diffusion=False):
+def create_SMOC_fieldset(datahead, periodic_wrap, chunk_level=0, anisotropic_diffusion=False):
     # ddir = os.path.join(datahead, "CMEMS/GLOBAL_REANALYSIS_PHY_001_030/")
     ddir = datahead
     coordinates = os.path.join(ddir, "coordinates.nc")
@@ -441,44 +384,8 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, chunk_level=0, anisotropic_di
                  }
 
     variables = {'U': 'uo', 'V': 'vo', 'W': 'wo', 'salinity': 'so', 'temperature': 'thetao'}
-    # variables = {'U': 'vozocrtx',
-    #              'V': 'vomecrty',
-    #              'W': 'vovecrtz',
-    #             'cons_temperature': 'votemper',
-    #             'abs_salinity': 'vosaline'
-    #              }
 
     dimensions = {'lon': 'longitude', 'lat': 'latitude', 'depth': 'depth', 'time': 'time'}
-    # dimensions = {'U': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'}, #time_centered
-    #               'V': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'},
-    #               'W': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'},
-    #              'temperature': {'lon': 'glamf', 'lat': 'gphif','depth': 'depthw', 'time': 'time_counter'},
-    #              'salinity': {'lon': 'glamf', 'lat': 'gphif','depth': 'depthw', 'time': 'time_counter'}
-    #               }
-
-    # if do_Stokes:
-    #     filenames_S = {'Stokes_U': wavesfiles, #Cannot be U for codegenerator!!
-    #                    'Stokes_V': wavesfiles,
-    #                   'wave_Tp': wavesfiles}
-    #
-    #     variables_S = {'Stokes_U': 'ust',
-    #                    'Stokes_V': 'vst',
-    #                   'wave_Tp': 'pp1d'}
-    #
-    #     dimensions_S = {'lat': 'lat',
-    #                     'lon': 'lon',
-    #                     'time': 'time'}
-    #
-    # if windage > 0:
-    #     filenames_wind = {'wind_U': windfiles, #Cannot be U for codegenerator!!
-    #                    'wind_V': windfiles}
-    #
-    #     variables_wind = {'wind_U': 'u10',
-    #                    'wind_V': 'v10'}
-    #
-    #     dimensions_wind = {'lat': 'lat',
-    #                     'lon': 'lon',
-    #                     'time': 'time'}
 
     chs = None
     if chunk_level > 1:
@@ -498,10 +405,6 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, chunk_level=0, anisotropic_di
     else:
         chs = False
 
-    # Kh_zonal = np.ones(U.shape, dtype=np.float32) * 0.5  # ?
-    # Kh_meridional = np.ones(U.shape, dtype=np.float32) * 0.5  # ?
-    # fieldset.add_constant_field("Kh_zonal", 1, mesh="flat")
-    # fieldset.add_constant_field("Kh_meridonal", 1, mesh="flat")
     global ttotal
     ttotal = 31  # days
     fieldset = None
@@ -510,37 +413,6 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, chunk_level=0, anisotropic_di
         fieldset = FieldSet.from_netcdf(filenames, variables, dimensions, chunksize=chs, time_periodic=datetime.timedelta(days=366))
     else:
         fieldset = FieldSet.from_netcdf(filenames, variables, dimensions, chunksize=chs, allow_time_extrapolation=True)
-
-    # if do_Stokes:
-    #     fieldset_Stokes = FieldSet.from_netcdf(filenames_S, variables_S, dimensions_S, mesh='spherical')
-    #     fieldset_Stokes.Stokes_U.units = GeographicPolar()
-    #     fieldset_Stokes.Stokes_V.units = Geographic()
-    #     fieldset_Stokes.add_periodic_halo(zonal=True)
-    #
-    #     fieldset.add_field(fieldset_Stokes.Stokes_U)
-    #     fieldset.add_field(fieldset_Stokes.Stokes_V)
-    #     fieldset.add_field(fieldset_Stokes.wave_Tp)
-    #
-    # if windage > 0:
-    #     fieldset_wind = FieldSet.from_netcdf(filenames_wind, variables_wind, dimensions_wind, mesh='spherical')
-    #     fieldset_wind.wind_U.units = GeographicPolar()
-    #     fieldset_wind.wind_V.units = Geographic()
-    #     fieldset_wind.wind_U.set_scaling_factor(windage)
-    #     fieldset_wind.wind_V.set_scaling_factor(windage)
-    #
-    #     fieldset_wind.add_periodic_halo(zonal=True)
-    #
-    #     fieldset.add_field(fieldset_wind.wind_U)
-    #     fieldset.add_field(fieldset_wind.wind_V)
-    #
-    # if do_Stokes or windage > 0:
-    #     fieldset_unbeach = FieldSet.from_netcdf(filenames_unbeach, variables_unbeach, dimensions_unbeach,
-    #                                             mesh='spherical')
-    #     fieldset_unbeach.unbeach_U.units = GeographicPolar()
-    #     fieldset_unbeach.unbeach_V.units = Geographic()
-    #
-    #     fieldset.add_field(fieldset_unbeach.unbeach_U)
-    #     fieldset.add_field(fieldset_unbeach.unbeach_V)
 
     global tsteps
     tsteps = len(fieldset.U.grid.time_full)
@@ -553,6 +425,10 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, chunk_level=0, anisotropic_di
     # ==== ==== ==== ==== ==== ==== ==== ==== ==== ==== #
     # ==== setting up the diffusive mixing    ==== ==== #
     # ==== ==== ==== ==== ==== ==== ==== ==== ==== ==== #
+    # Kh_zonal = np.ones(U.shape, dtype=np.float32) * 0.5  # ?
+    # Kh_meridional = np.ones(U.shape, dtype=np.float32) * 0.5  # ?
+    # fieldset.add_constant_field("Kh_zonal", 1, mesh="flat")
+    # fieldset.add_constant_field("Kh_meridonal", 1, mesh="flat")
     Kh_zonal = None
     Kh_meridional = None
     if anisotropic_diffusion: # simplest case: 10 m/s^2 -> Lacerda et al. 2019
@@ -603,6 +479,188 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, chunk_level=0, anisotropic_di
     return fieldset
 
 
+def create_CMEMS_fieldset(datahead, periodic_wrap, wavehead="", chunk_level=0, anisotropic_diffusion=False):
+    # ddir = os.path.join(datahead, "CMEMS/GLOBAL_REANALYSIS_PHY_001_030/")
+    ddir = datahead
+    do_stokes_wind = False
+    if len(wavehead) > 0:
+        do_stokes_wind = True
+    coordinates = os.path.join(ddir, "cooordinates", "GLO-MFC_001_024_coordinates.nc")
+    # files = sorted(glob(ddir+"mercatorglorys12v1_gl12_mean_2016*.nc"))
+    uvfiles = sorted(glob(os.path.join(ddir, "currents", "glo12_rg_1d-m_*-*_3D-uovo_hcst_*.nc")))
+    wfiles = sorted(glob(os.path.join(ddir, "currents", "glo12_rg_1d-m_*-*_3D-wo_hcst_*.nc")))
+    temperaturefiles = sorted(glob(os.path.join(ddir, "temperature", "glo12_rg_1d-m_*-*_3D-thetao_hcst_*.nc")))
+    salinityfiles = sorted(glob(os.path.join(ddir, "salinity", "glo12_rg_1d-m_*-*_3D-so_hcst_*.nc")))
+
+
+    filenames = {'U': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': uvfiles}, #'depth': wfiles,
+                 'V': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': uvfiles},
+                 'W': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': wfiles},
+                'temperature': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': temperaturefiles},
+                'salinity':    {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': salinityfiles}
+                 }
+
+    variables = {'U': 'uo', 'V': 'vo', 'W': 'wo', 'salinity': 'so', 'temperature': 'thetao'}
+    # variables = {'U': 'vozocrtx',
+    #              'V': 'vomecrty',
+    #              'W': 'vovecrtz',
+    #             'cons_temperature': 'votemper',
+    #             'abs_salinity': 'vosaline'
+    #              }
+
+    dimensions = {'lon': 'longitude', 'lat': 'latitude', 'depth': 'depth', 'time': 'time'}
+    # dimensions = {'U': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'}, #time_centered
+    #               'V': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'},
+    #               'W': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'},
+    #              'temperature': {'lon': 'glamf', 'lat': 'gphif','depth': 'depthw', 'time': 'time_counter'},
+    #              'salinity': {'lon': 'glamf', 'lat': 'gphif','depth': 'depthw', 'time': 'time_counter'}
+    #               }
+
+
+    stokes_uv = sorted(glob(os.path.join(wavehead, "ERA5_global_wind_waves", "ERA5_global_wind_monthly_*.nc")))
+    wind_uvfiles = sorted(glob(os.path.join(wavehead, "ERA5_global_wind-only", "ERA5_global_waves_monthly_*.nc")))
+    if do_stokes_wind:
+        filenames_S = {'Stokes_U': stokes_uv, #Cannot be U for codegenerator!!
+                       'Stokes_V': stokes_uv,
+                      'wave_Tp': stokes_uv}
+        variables_S = {'Stokes_U': 'ust',
+                       'Stokes_V': 'vst',
+                      'wave_Tp': 'pp1d'}
+        dimensions_S = {'lat': 'lat',
+                        'lon': 'lon',
+                        'time': 'time'}
+
+        filenames_wind = {'wind_U': wind_uvfiles, #Cannot be U for codegenerator!!
+                          'wind_V': wind_uvfiles}
+        variables_wind = {'wind_U': 'u10',
+                       'wind_V': 'v10'}
+        dimensions_wind = {'lat': 'lat',
+                        'lon': 'lon',
+                        'time': 'time'}
+
+    chs = None
+    if chunk_level > 1:
+        chs = {
+            'U': {'lon': ('longitude', 64), 'lat': ('latitude', 32), 'depth': ('depth', 5), 'time': ('time', 1)},  #
+            'V': {'lon': ('longitude', 64), 'lat': ('latitude', 32), 'depth': ('depth', 5), 'time': ('time', 1)},  #
+            'salinity': {'lon': ('longitude', 64), 'lat': ('latitude', 32), 'depth': ('depth', 5), 'time': ('time', 1)},  #
+            'temperature': {'lon': ('longitude', 64), 'lat': ('latitude', 32), 'depth': ('depth', 5), 'time': ('time', 1)},  #
+        }
+    elif chunk_level > 0:
+        chs = {
+            'U': 'auto',
+            'V': 'auto',
+            'salinity': 'auto',
+            'temperature': 'auto'
+        }
+    else:
+        chs = False
+
+    # Kh_zonal = np.ones(U.shape, dtype=np.float32) * 0.5  # ?
+    # Kh_meridional = np.ones(U.shape, dtype=np.float32) * 0.5  # ?
+    # fieldset.add_constant_field("Kh_zonal", 1, mesh="flat")
+    # fieldset.add_constant_field("Kh_meridonal", 1, mesh="flat")
+    global ttotal
+    ttotal = 31  # days
+    fieldset = None
+    if periodic_wrap:
+        # fieldset = FieldSet.from_netcdf(files, variables, dimensions, chunksize=chs, time_periodic=timedelta(days=31))
+        fieldset = FieldSet.from_netcdf(filenames, variables, dimensions, chunksize=chs, time_periodic=datetime.timedelta(days=366))
+    else:
+        fieldset = FieldSet.from_netcdf(filenames, variables, dimensions, chunksize=chs, allow_time_extrapolation=True)
+
+    # if do_Stokes:
+    #     fieldset_Stokes = FieldSet.from_netcdf(filenames_S, variables_S, dimensions_S, mesh='spherical')
+    #     fieldset_Stokes.Stokes_U.units = GeographicPolar()
+    #     fieldset_Stokes.Stokes_V.units = Geographic()
+    #     fieldset_Stokes.add_periodic_halo(zonal=True)
+    #
+    #     fieldset.add_field(fieldset_Stokes.Stokes_U)
+    #     fieldset.add_field(fieldset_Stokes.Stokes_V)
+    #     fieldset.add_field(fieldset_Stokes.wave_Tp)
+
+    #     fieldset_wind = FieldSet.from_netcdf(filenames_wind, variables_wind, dimensions_wind, mesh='spherical')
+    #     fieldset_wind.wind_U.units = GeographicPolar()
+    #     fieldset_wind.wind_V.units = Geographic()
+    #     fieldset_wind.wind_U.set_scaling_factor(windage)
+    #     fieldset_wind.wind_V.set_scaling_factor(windage)
+    #
+    #     fieldset_wind.add_periodic_halo(zonal=True)
+    #
+    #     fieldset.add_field(fieldset_wind.wind_U)
+    #     fieldset.add_field(fieldset_wind.wind_V)
+
+
+    # if do_Stokes or windage > 0:
+    #     fieldset_unbeach = FieldSet.from_netcdf(filenames_unbeach, variables_unbeach, dimensions_unbeach,
+    #                                             mesh='spherical')
+    #     fieldset_unbeach.unbeach_U.units = GeographicPolar()
+    #     fieldset_unbeach.unbeach_V.units = Geographic()
+    #
+    #     fieldset.add_field(fieldset_unbeach.unbeach_U)
+    #     fieldset.add_field(fieldset_unbeach.unbeach_V)
+
+    global tsteps
+    tsteps = len(fieldset.U.grid.time_full)
+    global tstepsize
+    tstepsize = int(math.floor(ttotal/tsteps))
+    xdim = fieldset.U.grid.xdim
+    ydim = fieldset.U.grid.ydim
+    tdim = fieldset.U.grid.tdim
+
+    # ==== ==== ==== ==== ==== ==== ==== ==== ==== ==== #
+    # ==== setting up the diffusive mixing    ==== ==== #
+    # ==== ==== ==== ==== ==== ==== ==== ==== ==== ==== #
+    Kh_zonal = None
+    Kh_meridional = None
+    if anisotropic_diffusion: # simplest case: 10 m/s^2 -> Lacerda et al. 2019
+        print("Generating anisotropic diffusion fields ...")
+        Kh_zonal = np.ones((ydim, xdim), dtype=np.float32) * 0.5 * 100.
+        Kh_meridional = np.empty((ydim, xdim), dtype=np.float32)
+        alpha = 1.  # Profile steepness
+        L = 1.  # Basin scale
+        # Ny = lat.shape[0]  # Number of grid cells in y_direction (101 +2, one level above and one below, where fields are set to zero)
+        # dy = 1.03 / Ny  # Spatial resolution
+        # y = np.linspace(-0.01, 1.01, 103)  # y-coordinates for grid
+        # y_K = np.linspace(0., 1., 101)  # y-coordinates used for setting diffusivity
+        beta = np.zeros(ydim)  # Placeholder for fraction term in K(y) formula
+
+        # for yi in range(len(y_K)):
+        for yi in range(ydim):
+            yk = (fieldset.U.lat[yi] - fieldset.U.lat[0]) / (fieldset.U.lat[1] - fieldset.U.lat[0])
+            if yk < L / 2:
+                beta[yi] = yk * np.power(L - 2 * yk, 1 / alpha)
+            elif yk[yi] >= L / 2:
+                beta[yi] = (L - yk) * np.power(2 * yk - L, 1 / alpha)
+        Kh_meridional_profile = 0.1 * (2 * (1 + alpha) * (1 + 2 * alpha)) / (alpha ** 2 * np.power(L, 1 + 1 / alpha)) * beta
+        for i in range(xdim):
+            for j in range(ydim):
+                Kh_meridional[j, i] = Kh_meridional_profile[j] * 100.
+    else:
+        print("Generating isotropic diffusion value ...")
+        # Kh_zonal = np.ones((ydim, xdim), dtype=np.float32) * np.random.uniform(0.85, 1.15) * 100.0  # in m^2/s
+        # Kh_meridional = np.ones((ydim, xdim), dtype=np.float32) * np.random.uniform(0.7, 1.3) * 100.0  # in m^2/s
+        # mesh_conversion = 1.0 / 1852. / 60 if fieldset.U.grid.mesh == 'spherical' else 1.0
+        Kh_zonal = np.random.uniform(low=0.85f, high=1.15f) * 100.0f  # in m^2/s
+        Kh_meridional = np.random.uniform(low=0.7f, high=1.3f) * 100.0f  # in m^2/s
+
+
+    if anisotropic_diffusion:
+        Kh_grid = RectilinearZGrid(lon=fieldset.U.lon, lat=fieldset.U.lat, mesh=fieldset.U.grid.mesh)
+        # fieldset.add_field(Field("Kh_zonal", Kh_zonal, lon=lon, lat=lat, to_write=False, mesh=mesh, transpose=False))
+        # fieldset.add_field(Field("Kh_meridional", Kh_meridional, lon=lon, lat=lat, to_write=False, mesh=mesh, transpose=False))
+        fieldset.add_field(Field("Kh_zonal", Kh_zonal, grid=Kh_grid, to_write=False, mesh=fieldset.U.grid.mesh, transpose=False))
+        fieldset.add_field(Field("Kh_meridional", Kh_meridional, grid=Kh_grid, to_write=False, mesh=fieldset.U.grid.mesh, transpose=False))
+        fieldset.add_constant("dres", max(fieldset.U.lat[1]-fieldset.U.lat[0], fieldset.U.lon[1]-fieldset.U.lon[0]))
+    else:
+        fieldset.add_constant_field("Kh_zonal", Kh_zonal, mesh=fieldset.U.grid.mesh)
+        fieldset.add_constant_field("Kh_meridional", Kh_meridional, mesh=fieldset.U.grid.mesh)
+        # fieldset.add_constant("Kh_zonal", Kh_zonal)
+        # fieldset.add_constant("Kh_meridional", Kh_meridional)
+
+    return fieldset
+
+
 class SampleParticle(JITParticle):
     valid = Variable('valid', dtype=np.int32, initial=-1, to_write=True)
     sample_u = Variable('sample_u', initial=0., dtype=np.float32, to_write=True)
@@ -626,8 +684,8 @@ projectcode = "SouthernOcean"
 age_ptype = {'scipy': AgeParticle_SciPy, 'jit': AgeParticle_JIT}
 # ====
 # standard gres: 1 / 0.08333588 = 11.999633291 = 12
-# start example: python3 SouthernOcean_Euler-only.py -f metadata.txt -im 'rk4' -gres 1 -t 366 -dt 600 -ot 3600
-#                python3 SouthernOcean_Euler-only.py -f metadata.txt -im 'ee' -gres 6 -zsteps 25 -t 366 -dt 1800 -ot 3600 -chs 0 --convert_chunk --writeNC --writeH5
+# start example: python3 SouthernOcean.py -f metadata.txt -im 'rk4' -gres 1 -t 366 -dt 600 -ot 3600
+#                python3 SouthernOcean.py -f metadata.txt -im 'ee' -gres 6 -zsteps 25 -t 366 -dt 1800 -ot 3600 -chs 0 --convert_chunk --writeNC --writeH5
 # ====
 if __name__=='__main__':
     parser = ArgumentParser(description="Running Parcels simulation with Mikael Kaandorp's code using the Southern Ocean Data")
@@ -707,6 +765,7 @@ if __name__=='__main__':
     dirread_pal = ""
     datahead = ""
     dirread_hydro = ""
+    dirread_atmo = ""
     dirread_Stokes = ""
     dirread_wind = ""
     dirread_top_bgc = ""
@@ -716,26 +775,29 @@ if __name__=='__main__':
         odir = os.path.join(headdir, "CMEMS", branch)
         datahead = "/data/oceanparcels/input_data"
         dirread_hydro = os.path.join(datahead, 'CMEMS', 'GLOBAL_REANALYSIS_PHY_001_030/')
-        dirread_Stokes = os.path.join(datahead, 'ERA5', 'waves/')
-        dirread_wind = os.path.join(datahead, 'ERA5', 'wind/')
+        dirread_atmo = os.path.join(datahead, 'ERA5')
+        dirread_Stokes = os.path.join(dirread_atmo, 'waves/')
+        dirread_wind = os.path.join(dirread_atmo, 'wind/')
         computer_env = "Gemini"
     elif fnmatch.fnmatchcase(os.uname()[1], "*.bullx*"):  # Cartesius
         CARTESIUS_SCRATCH_USERNAME = 'ckehluu'
         headdir = "/scratch/shared/{}/experiments".format(CARTESIUS_SCRATCH_USERNAME)
         odir = os.path.join(headdir, "CMEMS", branch)
-        datahead = "/projects/0/topios/hydrodynamic_data"
-        dirread_hydro = os.path.join(datahead, 'CMEMS', 'GLOBAL_REANALYSIS_PHY_001_030/')
-        dirread_Stokes = os.path.join(datahead, 'ERA5', 'waves/')
-        dirread_wind = os.path.join(datahead, 'ERA5', 'wind/')
+        datahead = "/projects/0/topios"
+        dirread_hydro = os.path.join(datahead, "hydrodynamic_data", 'CMEMS_Global-Ocean')
+        dirread_atmo = os.path.join(datahead, "atmospheric_data", 'ERA5')
+        dirread_Stokes = os.path.join(dirread_atmo, 'waves/')
+        dirread_wind = os.path.join(dirread_atmo, 'wind/')
         computer_env = "Cartesius"
     elif fnmatch.fnmatchcase(os.uname()[1], "PROMETHEUS"):  # Prometheus computer - use USB drive
         CARTESIUS_SCRATCH_USERNAME = 'christian'
         headdir = "/media/{}/DATA/data/hydrodynamics".format(CARTESIUS_SCRATCH_USERNAME)
         odir = os.path.join(headdir, "CMEMS", branch)
-        datahead = "/media/{}/MyPassport/data/hydrodynamic".format(CARTESIUS_SCRATCH_USERNAME)
-        dirread_hydro = os.path.join(datahead, 'CMEMS', 'GLOBAL_REANALYSIS_PHY_001_030/')
-        dirread_Stokes = os.path.join(datahead, 'ERA5', 'waves/')
-        dirread_wind = os.path.join(datahead, 'ERA5', 'wind/')
+        datahead = "/media/{}/OneTouch/storage/data".format(CARTESIUS_SCRATCH_USERNAME)
+        dirread_hydro = os.path.join(datahead, "hydrodynamics", 'CMEMS_Global-Ocean')
+        dirread_atmo = os.path.join(datahead, "atmospherics", 'ERA5')
+        dirread_Stokes = os.path.join(dirread_atmo, 'waves/')
+        dirread_wind = os.path.join(dirread_atmo, 'wind/')
         computer_env = "Prometheus"
     else:
         headdir = "/var/scratch/experiments"
@@ -743,8 +805,9 @@ if __name__=='__main__':
         dirread_pal = headdir
         datahead = "/data"
         dirread_hydro = os.path.join(datahead, 'CMEMS', 'GLOBAL_REANALYSIS_PHY_001_030/')
-        dirread_Stokes = os.path.join(datahead, 'ERA5', 'waves/')
-        dirread_wind = os.path.join(datahead, 'ERA5', 'wind/')
+        dirread_atmo = os.path.join(datahead, 'ERA5')
+        dirread_Stokes = os.path.join(dirread_atmo, 'waves/')
+        dirread_wind = os.path.join(dirread_atmo, 'wind/')
     print("running {} on {} (uname: {}) - branch '{}' - argv: {}".format(scenario, computer_env, os.uname()[1], branch, sys.argv[1:]))
     if not os.path.exists(odir):
         os.mkdir(odir)
@@ -775,7 +838,7 @@ if __name__=='__main__':
 
 
     # fieldset = create_CMEMS_fieldset(datahead=datahead, periodic_wrap=periodicFlag, chunk_level=chs, anisotropic_diffusion=diffuseFlag)
-    fieldset = create_CMEMS_fieldset(datahead=dirread_hydro, periodic_wrap=periodicFlag, chunk_level=chs, anisotropic_diffusion=diffuseFlag)
+    fieldset = create_CMEMS_fieldset(datahead=dirread_hydro, windhead=dirread_atmo, periodic_wrap=periodicFlag, chunk_level=chs, anisotropic_diffusion=diffuseFlag)
     use_3D = hasattr(fieldset, "W")
     fieldset.add_constant('verbose_delete', True)
     fieldset.add_constant("east_lim", target_area[1])
@@ -1012,10 +1075,11 @@ if __name__=='__main__':
 
 
 
+    exit()
     # ================================================== #
     # ==== ==== ==== resampling the field ==== ==== ==== #
     # ================================================== #
-
+    gres = 1 # TODO: adapt to field_sx/sy/sz
     step = 1.0/gres
     dx = (xe-xs)
     dy = (ye-ys)
@@ -1063,14 +1127,14 @@ if __name__=='__main__':
         sample_pset = ParticleSet(fieldset=fieldset, pclass=SampleParticle, lon=np.array(p_corner_x).flatten(), lat=np.array(p_corner_y).flatten(), depth=np.array(p_corner_z).flatten(), time=sample_time)
         sample_kernel = sample_pset.Kernel(sample_uv) + sample_pset.Kernel(PolyTEOS10_bsq)
         # sample_output_file = sample_pset.ParticleFile(name=nc_sample_filename, outputdt=timedelta(seconds=outdt_seconds))
-        sample_output_file = sample_pset.ParticleFile(name=zarr_sample_filename, outputdt=timedelta(seconds=outdt_seconds))
+        sample_output_file = sample_pset.ParticleFile(name=zarr_sample_filename, outputdt=datetime.timedelta(seconds=outdt_seconds))
         postProcessFuncs = []
         if with_GC:
             postProcessFuncs = [perIterGC, ]
         if backwardSimulation:
-            sample_pset.execute(sample_kernel, runtime=timedelta(days=time_in_days), dt=timedelta(seconds=-dt_seconds), output_file=sample_output_file, postIterationCallbacks=postProcessFuncs, callbackdt=timedelta(seconds=outdt_seconds))
+            sample_pset.execute(sample_kernel, runtime=datetime.timedelta(days=time_in_days), dt=datetime.timedelta(seconds=-dt_seconds), output_file=sample_output_file, postIterationCallbacks=postProcessFuncs, callbackdt=datetime.timedelta(seconds=outdt_seconds))
         else:
-            sample_pset.execute(sample_kernel, runtime=timedelta(days=time_in_days), dt=timedelta(seconds=dt_seconds), output_file=sample_output_file, postIterationCallbacks=postProcessFuncs, callbackdt=timedelta(seconds=outdt_seconds))
+            sample_pset.execute(sample_kernel, runtime=datetime.timedelta(days=time_in_days), dt=datetime.timedelta(seconds=dt_seconds), output_file=sample_output_file, postIterationCallbacks=postProcessFuncs, callbackdt=datetime.timedelta(seconds=outdt_seconds))
         # sample_output_file.close()
         del sample_output_file
         del sample_pset
