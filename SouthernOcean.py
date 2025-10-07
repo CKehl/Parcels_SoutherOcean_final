@@ -80,7 +80,7 @@ def time_index_value(tx, _ft, _ft_dt=None):
     if f_dt is None:
         f_dt = ft[1] - ft[0]
         if type(f_dt) not in [np.float64, np.float32]:
-            f_dt = timedelta(f_dt).total_seconds()
+            f_dt = datetime.timedelta(f_dt).total_seconds()
     # f_interp = (f_min + tx) / f_dt if f_dt >= 0 else (f_max + tx) / f_dt
     f_interp = tx / f_dt
     ti = int(math.floor(f_interp))
@@ -97,7 +97,7 @@ def time_partion_value(tx, _ft, _ft_dt=None):
     if f_dt is None:
         f_dt = ft[1] - ft[0]
         if type(f_dt) not in [np.float64, np.float32]:
-            f_dt = timedelta(f_dt).total_seconds()
+            f_dt = datetime.timedelta(f_dt).total_seconds()
     # f_interp = (f_min + tx) / f_dt if f_dt >= 0 else (f_max + tx) / f_dt
     f_interp = abs(tx / f_dt)
     f_interp = max(0.0, min(float(ft.shape[0]-1), f_interp))
@@ -119,7 +119,7 @@ def convert_timearray(t_array, dt_minutes, ns_per_sec, debug=False, array_name="
     ta = t_array
     while len(ta.shape) > 1:
         ta = ta[0]
-    if isinstance(ta[0], datetime) or isinstance(ta[0], timedelta) or isinstance(ta[0], np.timedelta64) or isinstance(ta[0], np.datetime64) or np.float64(ta[1]-ta[0]) > (dt_minutes+dt_minutes/2.0):
+    if isinstance(ta[0], datetime.datetime) or isinstance(ta[0], datetime.timedelta) or isinstance(ta[0], np.timedelta64) or isinstance(ta[0], np.datetime64) or np.float64(ta[1]-ta[0]) > (dt_minutes+dt_minutes/2.0):
         if debug:
             print("{}.dtype before conversion: {}".format(array_name, t_array.dtype))
         t_array = (t_array / ns_per_sec).astype(np.float64)
@@ -641,8 +641,8 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, wavehead="", chunk_level=0, a
         # Kh_zonal = np.ones((ydim, xdim), dtype=np.float32) * np.random.uniform(0.85, 1.15) * 100.0  # in m^2/s
         # Kh_meridional = np.ones((ydim, xdim), dtype=np.float32) * np.random.uniform(0.7, 1.3) * 100.0  # in m^2/s
         # mesh_conversion = 1.0 / 1852. / 60 if fieldset.U.grid.mesh == 'spherical' else 1.0
-        Kh_zonal = np.random.uniform(low=0.85f, high=1.15f) * 100.0f  # in m^2/s
-        Kh_meridional = np.random.uniform(low=0.7f, high=1.3f) * 100.0f  # in m^2/s
+        Kh_zonal = np.random.uniform(low=0.85, high=1.15) * 100.0  # in m^2/s
+        Kh_meridional = np.random.uniform(low=0.7, high=1.3) * 100.0  # in m^2/s
 
 
     if anisotropic_diffusion:
