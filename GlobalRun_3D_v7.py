@@ -279,10 +279,10 @@ if __name__=="__main__":
                            'unbeach_V': unbeachfiles}
 
         variables_unbeach = {'unbeach_U': 'land_current_u',
-                           'unbeach_V': 'land_current_v'}   
+                             'unbeach_V': 'land_current_v'}
 
         dimensions_unbeach = {'lat': 'lat',
-                            'lon': 'lon'}
+                              'lon': 'lon'}
 
         
     fieldset = FieldSet.from_nemo(filenames, variables, dimensions, indices=indices, allow_time_extrapolation=False)
