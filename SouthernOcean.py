@@ -17,6 +17,7 @@ from parcels.grid import RectilinearZGrid
 from parcels import ParcelsRandom, logger
 
 from kernels_v3 import PlasticParticle_SciPy, PlasticParticle_JIT, Stokes_drift, windage_drift  # , initialize_neutral_bouyancy, neutral_buoyancy, settling_velocity
+from sample_depth_coord_particles import interpolate_bathymetry_via_lonlat
 
 import warnings
 import xarray as xr
@@ -58,11 +59,11 @@ Nparticle = int(math.pow(2,10)) # equals to Nparticle = 1024
 # ye = 55.765  # arc degree
 # ------ Southern Ocean ------ #
 xs = -15.0  # arc degree
-xe = 45.0  # arc degree
+xe = 44.91667  # arc degree
 ys = -65.0  # arc degree
-ye = -20.0  # arc degree
-zs = 0.5  # arc degree
-ze = 5725.0  # arc degree
+ye = -20.08333  # arc degree
+zs = 0.5  # metres
+ze = 5725.0  # metres
 
 target_area = [xs, xe, ys, ye]
 windage = 0.25
@@ -174,7 +175,99 @@ coords_points = [(13.175806, -20.196043),
                  (18.857755, -34.416841),
                  (19.281130, -34.640196),
                  (20.042563, -34.860687),
-                 (20.901432, -34.406152)]
+                 (20.901432, -34.406152),
+
+                 (20.913995,-34.414499),
+                 (20.918974,-34.425296),
+                 (20.923609,-34.431137),
+                 (20.923394,-34.453894),
+                 (20.919446,-34.476857),
+                 (20.906056,-34.501406),
+                 (20.874127,-34.523755),
+                 (20.805978,-34.544542),
+                 (20.762547,-34.552460),
+                 (20.656289,-34.546522),
+                 (20.578355,-34.562356),
+                 (20.537156,-34.621991),
+                 (20.488404,-34.684970),
+                 (20.385236,-34.729140),
+                 (20.370988,-34.757493),
+                 (20.255288,-34.850521),
+                 (20.193146,-34.914312),
+                 (20.121392,-34.961314),
+                 (20.000371,-34.969754),
+                 (19.889992,-34.939364),
+                 (19.781846,-34.876015),
+                 (19.647092,-34.905303),
+                 (19.507703,-34.861509),
+                 (19.382733,-34.768633),
+                 (19.263257,-34.761723),
+                 (19.128159,-34.718700),
+                 (19.076146,-34.600798),
+                 (19.143437,-34.494190),
+                 (19.058808,-34.501264),
+                 (18.950661,-34.467305),
+                 (18.874615,-34.486550),
+                 (18.745354,-34.479475),
+                 (18.617295,-34.391837),
+                 (18.584679,-34.278721),
+                 (18.597039,-34.298861),
+                 (18.641156,-34.449187),
+                 (18.250455,-34.454850),
+                 (18.171834,-34.332747),
+                 (18.118790,-34.186471),
+                 (18.082570,-34.048903),
+                 (18.164452,-33.907407),
+                 (18.156384,-33.794212),
+                 (18.137501,-33.656293),
+                 (18.073815,-33.510425),
+                 (17.867650,-33.359006),
+                 (17.806710,-33.221972),
+                 (17.784566,-33.071202),
+                 (17.677964,-32.926657),
+                 (17.666806,-32.802944),
+                 (17.738045,-32.668510),
+                 (17.978200,-32.561512),
+                 (18.090638,-32.572073),
+                 (18.118962,-32.459600),
+                 (18.088406,-32.314786),
+                 (18.013734,-32.033050),
+                 (17.934083,-31.739787),
+                 (17.771519,-31.553611),
+                 (17.448624,-31.211713),
+                 (17.151478,-30.645236),
+                 (17.017239,-30.363928),
+                 (16.769360,-29.804393),
+                 (16.658685,-29.432156),
+                 (16.178891,-29.290774),
+                 (14.985501,-28.550936),
+                 (14.180066,-27.600381),
+                 (13.935620,-26.646419),
+                 (13.671949,-25.775968),
+                 (13.296354,-23.923695),
+                 (12.726438,-21.600177),
+                 (12.317197,-20.947529),
+                 (11.090162,-19.031811),
+                 (10.646589,-17.915570),
+                 (10.577237,-16.646920),
+                 (10.766065,-15.696628),
+                 (11.390912,-13.101085),
+                 (10.808637,-12.180513),
+                 (9.710004 , -5.464472),
+
+                 (2.816083, -5.510950),
+                 (3.760907, -10.400234),
+                 (4.024579, -15.452559),
+                 (4.106977, -18.061207),
+                 (6.216352, -22.770044),
+                 (6.771161, -27.838048),
+                 (9.715497, -33.030718),
+                 (11.319501, -37.873935),
+                 (20.059125, -39.520095),
+                 (28.051679, -38.267463),
+                 (36.055219, -33.053742),
+                 (40.603558, -28.602793),
+                 (42.910687, -24.501087)]
 
 def generate_point_sources():
     lons = []
@@ -183,8 +276,10 @@ def generate_point_sources():
     tx = []
     ty = []
     for i in range(Np):
-        prev_index = ((i-1)+Np)%Np
-        next_index = ((i+1)+Np)%Np
+        # prev_index = ((i-1)+Np)%Np
+        # next_index = ((i+1)+Np)%Np
+        prev_index = np.maximum((i - 1), 0)
+        next_index = np.minimum((i + 1), Np-1)
         curr = list(coords_points[i])
         prev = list(coords_points[prev_index])
         nxt = list(coords_points[next_index])
@@ -230,8 +325,9 @@ def generate_lines():
     tx.append(txi)
     ty.append(tyi)
     for i in range(1, Np):
-        prev_index = ((i-1)+Np)%Np
+        # prev_index = ((i-1)+Np)%Np
         # next_index = ((i+1)+Np)%Np
+        prev_index = np.maximum((i - 1), 0)
         curr = list(coords_points[i])
         prev = list(coords_points[prev_index])
         # nxt = list(coords_points[next_index])
@@ -243,9 +339,9 @@ def generate_lines():
         dist = math.sqrt(dist2)
         txi = dy/dist
         tyi = -dx/dist
-        dx_step = (dx/dist)*0.01
-        dy_step = (dy/dist)*0.01
-        while(dist2 > 0.02):
+        dx_step = (dx/dist)*0.002
+        dy_step = (dy/dist)*0.002
+        while(dist2 > 0.01):
             curr = ( prev[0]+dx_step, prev[1]+dy_step )
             lons.append(curr[0])
             lats.append(curr[1])
@@ -255,15 +351,15 @@ def generate_lines():
             dy = nxt[1]-curr[1]
             dist2 = dx*dx+dy*dy
             prev = curr
-    Np = len(lons)
-    for pi in range(1, 11):
-        for i in range(Np):
-            x = lons[i]
-            y = lats[i]
-            lons.append(x+pi*tx[i]*0.2)
-            lats.append(y+pi*ty[i]*0.2)
-            lons.append(x+pi*tx[i]*-0.2)
-            lats.append(y+pi*ty[i]*-0.2)
+    # Np = len(lons)
+    # for pi in range(1, 11):
+    #     for i in range(Np):
+    #         x = lons[i]
+    #         y = lats[i]
+    #         lons.append(x+pi*tx[i]*0.1)
+    #         lats.append(y+pi*ty[i]*0.1)
+    #         # lons.append(x+pi*tx[i]*-0.1)
+    #         # lats.append(y+pi*ty[i]*-0.1)
     return np.array(lons), np.array(lats)
 
 
@@ -308,6 +404,7 @@ def age_func(particle, fieldset, time):
         particle.age_d = particle.age/86400.0
     if particle.age > particle.life_expectancy:
         particle.delete()
+        # print("Partcle removed due to age_func.")
 
 
 def validate(particle, fieldset, time):
@@ -329,6 +426,7 @@ def validate(particle, fieldset, time):
         particle.pre_lon = particle.lon
         particle.pre_lat = particle.lat
     if particle.valid < 1:
+        # print("Partcle removed due to having a nan-value.")
         particle.delete()
 
 
@@ -342,24 +440,25 @@ def RenewParticle(particle, fieldSet, time):
     if particle.lon < WE:
     # if particle.lon < -(dlon/2.0):
         # particle.lon += dlon
-        particle.lon = WE + (math.fabs(particle.lon) - math.fabs(WE))
+        particle.lon = WE + (math.fabs(particle.lon - WE))
     if particle.lon > EA:
     # if particle.lon > (dlon/2,0):
         # particle.lon -= dlon
-        particle.lon = EA - (math.fabs(particle.lon) - math.fabs(EA))
+        particle.lon = EA - (math.fabs(particle.lon - EA))
     if particle.lat < SO:
         # particle.lat += dlat
-        particle.lat = SO + (math.fabs(particle.lat) - math.fabs(SO))
+        particle.lat = SO + (math.fabs(particle.lat- SO))
     if particle.lat > NO:
         # particle.lat -= dlat
-        particle.lat = NO - (math.fabs(particle.lat) - math.fabs(NO))
+        particle.lat = NO - (math.fabs(particle.lat - NO))
     if fieldset.isThreeD > 0.0:
         TO = fieldset.top
         BO = fieldset.bottom
         if particle.depth < TO:
             particle.depth = TO + 1.0
         if particle.depth > BO:
-            particle.depth = BO - 1.0
+            # particle.depth = BO - 1.0
+            particle.depth = TO + (particle.depth - TO) / 2.0
 
 
 def DeleteParticle(particle, fieldset, time):
@@ -395,7 +494,37 @@ def WrapClip_BC(particle, fieldSet, time):
         if particle.depth < TO:
             particle.depth = TO + 1.0
         if particle.depth > BO:
-            particle.depth = BO - 1.0
+            # particle.depth = BO - 1.0
+            particle.depth = TO + (particle.depth - TO) / 2.0
+
+
+def DeleteBCParticle(particle, fieldset, time):
+    ErrorInterpolation = 51
+    ErrorOutOfBounds = 60
+    ErrorThroughSurface = 61
+    ErrorTimeExtrapolation = 70
+    EA = fieldset.east_lim
+    WE = fieldset.west_lim
+    NO = fieldset.north_lim
+    SO = fieldset.south_lim
+    if particle.lon <= WE:
+        particle.delete()
+    if particle.lon >= EA:
+        particle.delete()
+    if particle.lat <= SO:
+        particle.delete()
+    if particle.lat >= NO:
+        particle.delete()
+    if fieldset.isThreeD > 0.0:
+        TO = fieldset.top
+        BO = fieldset.bottom
+        if particle.depth <= TO:
+            particle.delete()
+        if particle.depth >= BO:
+            particle.delete()
+    if (particle.state == ErrorInterpolation) or (particle.state == ErrorOutOfBounds) or (particle.state == ErrorThroughSurface):
+        particle.delete()
+
 
 
 periodicBC = WrapClip_BC
@@ -557,27 +686,39 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, wavehead="", chunk_level=0, a
     do_stokes_wind = False
     if len(wavehead) > 0:
         do_stokes_wind = True
-    coordinates = os.path.join(ddir, "coordinates", "GLO-MFC_001_024_coordinates.nc")
-    # files = sorted(glob(ddir+"mercatorglorys12v1_gl12_mean_2016*.nc"))
-    uvfiles = sorted(glob(os.path.join(ddir, "currents", "glo12_rg_1d-m_*-*_3D-uovo_hcst_*.nc")))
-    wfiles  = sorted(glob(os.path.join(ddir, "currents", "glo12_rg_1d-m_*-*_3D-wo_hcst_*.nc")))
-    temperaturefiles = sorted(glob(os.path.join(ddir, "physics", "glo12_rg_1d-m_*-*_3D-thetao_hcst_*.nc")))
-    salinityfiles    = sorted(glob(os.path.join(ddir, "physics", "glo12_rg_1d-m_*-*_3D-so_hcst_*.nc")))
+
+    # files = sorted(glob(ddir+"mercatorglorys12v1_gl12_mean_2016*.nc"))  # old CMEMS data
+    # coordinates = os.path.join(ddir, "coordinates", "GLO-MFC_001_024_coordinates.nc")  # only for original CMEMS data, not derivatives
+    # uvfiles = sorted(glob(os.path.join(ddir, "currents", "glo12_rg_1d-m_*-*_3D-uovo_hcst_*.nc")))
+    # wfiles  = sorted(glob(os.path.join(ddir, "currents", "glo12_rg_1d-m_*-*_3D-wo_hcst_*.nc")))
+    # temperaturefiles = sorted(glob(os.path.join(ddir, "physics", "glo12_rg_1d-m_*-*_3D-thetao_hcst_*.nc")))
+    # salinityfiles    = sorted(glob(os.path.join(ddir, "physics", "glo12_rg_1d-m_*-*_3D-so_hcst_*.nc")))
+    ufiles = sorted(glob(os.path.join(ddir, "currents", "hydrodynamic_U_d*.nc")))
+    vfiles = sorted(glob(os.path.join(ddir, "currents", "hydrodynamic_V_d*.nc")))
+    wfiles  = sorted(glob(os.path.join(ddir, "currents", "hydrodynamic_W_d*.nc")))
+    temperaturefiles = sorted(glob(os.path.join(ddir, "physics", "field_THETAO_d*.nc")))
+    salinityfiles    = sorted(glob(os.path.join(ddir, "physics", "field_SO_d*.nc")))
+    if DBG_MSG:
+        print("U-files: {}\n\n".format(ufiles))
+        print("V-files: {}\n\n".format(vfiles))
+        print("W-files: {}\n\n".format(wfiles))
+        print("temperature files: {}\n\n".format(temperaturefiles))
+        print("salinity files: {}\n\n".format(salinityfiles))
 
 
-    # filenames = {'U': {'lon': uvfiles, 'lat': uvfiles, 'depth': uvfiles, 'data': uvfiles}, #'depth': wfiles,
-    #              'V': {'lon': uvfiles, 'lat': uvfiles, 'depth': uvfiles, 'data': uvfiles},
-    #              'W': {'lon': wfiles, 'lat': wfiles, 'depth': wfiles, 'data': wfiles},
-    #              'temperature': {'lon': temperaturefiles, 'lat': temperaturefiles, 'depth': temperaturefiles, 'data': temperaturefiles},
-    #              'salinity':    {'lon': salinityfiles, 'lat': salinityfiles, 'depth': salinityfiles, 'data': salinityfiles}
-    #              }
-
-    filenames = {'U': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': uvfiles}, #'depth': wfiles,
-                 'V': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': uvfiles},
-                 'W': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': wfiles},
-                 'temperature': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': temperaturefiles},
-                 'salinity':    {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': salinityfiles}
+    filenames = {'U': {'lon': ufiles[0], 'lat': ufiles[0], 'depth': ufiles[0], 'data': ufiles}, #'depth': wfiles,
+                 'V': {'lon': vfiles[0], 'lat': vfiles[0], 'depth': vfiles[0], 'data': vfiles},
+                 'W': {'lon': wfiles[0], 'lat': wfiles[0], 'depth': wfiles[0], 'data': wfiles},
+                 'temperature': {'lon': temperaturefiles[0], 'lat': temperaturefiles[0], 'depth': temperaturefiles[0], 'data': temperaturefiles},
+                 'salinity':    {'lon': salinityfiles[0], 'lat': salinityfiles[0], 'depth': salinityfiles[0], 'data': salinityfiles}
                  }
+
+    # filenames = {'U': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': uvfiles}, #'depth': wfiles,
+    #              'V': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': uvfiles},
+    #              'W': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': wfiles},
+    #              'temperature': {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': temperaturefiles},
+    #              'salinity':    {'lon': coordinates, 'lat': coordinates, 'depth': coordinates, 'data': salinityfiles}
+    #              }
 
     variables = {'U': 'uo', 'V': 'vo', 'W': 'wo', 'salinity': 'so', 'temperature': 'thetao'}
     # variables = {'U': 'vozocrtx',
@@ -587,7 +728,8 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, wavehead="", chunk_level=0, a
     #             'abs_salinity': 'vosaline'
     #              }
 
-    dimensions = {'lon': 'longitude', 'lat': 'latitude', 'depth': 'depth', 'time': 'time'}
+    # dimensions = {'lon': 'longitude', 'lat': 'latitude', 'depth': 'depth', 'time': 'time'}
+    dimensions = {'lon': 'lon', 'lat': 'lat', 'depth': 'depth', 'time': 'time'}
     # dimensions = {'U': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'}, #time_centered
     #               'V': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'},
     #               'W': {'lon': 'glamf', 'lat': 'gphif', 'depth': 'depthw', 'time': 'time_counter'},
@@ -595,8 +737,8 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, wavehead="", chunk_level=0, a
     #              'salinity': {'lon': 'glamf', 'lat': 'gphif','depth': 'depthw', 'time': 'time_counter'}
     #               }
 
-    stokes_uv = sorted(glob(os.path.join(wavehead, "ERA5_global_wind_waves", "ERA5_global_waves_monthly_*.nc")))
-    wind_uvfiles = sorted(glob(os.path.join(wavehead, "ERA5_global_wind-only", "ERA5_global_wind_monthly_*.nc")))
+    stokes_uv = []
+    wind_uvfiles = []
     filenames_S = {}
     variables_S = {}
     dimensions_S = {}
@@ -604,6 +746,8 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, wavehead="", chunk_level=0, a
     variables_wind = {}
     dimensions_wind = {}
     if do_stokes_wind:
+        stokes_uv = sorted(glob(os.path.join(wavehead, "ERA5_global_wind_waves", "ERA5_global_waves_monthly_*.nc")))
+        wind_uvfiles = sorted(glob(os.path.join(wavehead, "ERA5_global_wind-only", "ERA5_global_wind_monthly_*.nc")))
         filenames_S = {'Stokes_U': stokes_uv, #Cannot be U for codegenerator!!
                        'Stokes_V': stokes_uv,
                        'wave_Tp': stokes_uv}
@@ -651,11 +795,17 @@ def create_CMEMS_fieldset(datahead, periodic_wrap, wavehead="", chunk_level=0, a
     fieldset = None
     if periodic_wrap:
         # fieldset = FieldSet.from_netcdf(files, variables, dimensions, chunksize=chs, time_periodic=timedelta(days=31))
-        fieldset = FieldSet.from_netcdf(filenames, variables, dimensions, chunksize=chs, time_periodic=datetime.timedelta(days=366))
+        # fieldset = FieldSet.from_netcdf(filenames, variables, dimensions, chunksize=chs, time_periodic=datetime.timedelta(days=366))
+        fieldset = FieldSet.from_netcdf(filenames, variables, dimensions, chunksize=chs, time_periodic=datetime.timedelta(days=365))
     else:
         fieldset = FieldSet.from_netcdf(filenames, variables, dimensions, chunksize=chs, allow_time_extrapolation=True)
     fieldset.add_constant('G', 9.81)  # gravitational constant
 
+    # ========================================================================== #
+    # common error: datatypes of hydrodynamics and atmospherics are different.   #
+    # see Parcels error:                                                         #
+    # AssertionError: time origins of different grids must be have the same type #
+    # ========================================================================== #
     if do_stokes_wind:
         fieldset_Stokes = FieldSet.from_netcdf(filenames_S, variables_S, dimensions_S, mesh='spherical')
         fieldset_Stokes.Stokes_U.units = GeographicPolar()
@@ -770,9 +920,10 @@ def sample_uv(particle, fieldset, time):
 projectcode = "SouthernOcean"
 age_ptype = {'scipy': AgeParticle_SciPy, 'jit': AgeParticle_JIT}
 # ====
-# standard gres: 1 / 0.08333588 = 11.999633291 = 12
-# start example: python3 SouthernOcean.py -f metadata.txt -im 'rk4' -gres 1 -t 366 -dt 600 -ot 3600
-#                python3 SouthernOcean.py -f metadata.txt -im 'ee' -gres 6 -zsteps 25 -t 366 -dt 1800 -ot 3600 -chs 0 --convert_chunk --writeNC --writeH5
+# standard gres:  1 / 0.08333588 = 11.999633291 = 12
+# start example:  python3 SouthernOcean.py -f metadata.txt -im 'rk4' -gres 1 -t 366 -dt 600 -ot 3600
+#                 python3 SouthernOcean.py -f metadata.txt -im 'ee' -gres 6 -zsteps 25 -t 366 -dt 1800 -ot 3600 -chs 0 --convert_chunk --writeNC --writeH5
+# simulation ex.: python3 /media/christian/DATA/git/Parcels_SoutherOcean_final/SouthernOcean.py -f /media/christian/DATA/data/hydrodynamics/SouthernOcean/file.txt -p -t 365 -dt 43200 -ot 86400 -im rk4 -N 2**13 -G -chs 0 --dry -d
 # ====
 if __name__=='__main__':
     parser = ArgumentParser(description="Running Parcels simulation with Mikael Kaandorp's code using the Southern Ocean Data")
@@ -791,8 +942,8 @@ if __name__=='__main__':
     parser.add_argument("-zsteps", "--z_resolution", dest="zsteps", type=int, default=50, help="number of cells in z-direction (default: 50)")
     parser.add_argument("-G", "--GC", dest="useGC", action='store_true', default=False, help="using a garbage collector (default: false)")
     parser.add_argument("-chs", "--chunksize", dest="chs", type=int, default=0, help="defines the chunksize level: 0=None, 1='auto', 2=fine tuned; default: 0")
-    parser.add_argument("--writeNC", dest="writeNC", action='store_true', default=False, help="write output to NetCDF (default: false)")
-    parser.add_argument("--writeH5", dest="writeH5", action='store_true', default=False, help="write output to HDF5 (default: false)")
+    parser.add_argument("--writeNC", dest="writeNC", action='store_true', default=False, help="write sample output to NetCDF (default: false)")
+    parser.add_argument("--writeH5", dest="writeH5", action='store_true', default=False, help="write sample output to HDF5 (default: false)")
     parser.add_argument("--convert_chunk", dest="convert_chunk", action='store_true', default=False, help="use Dask chunking to convert sample particles (default: false)")
     parser.add_argument("-fsx", "--field_sx", dest="field_sx", type=int, default="480", help="number of original field cells in x-direction")
     parser.add_argument("-fsy", "--field_sy", dest="field_sy", type=int, default="240", help="number of original field cells in y-direction")
@@ -879,15 +1030,23 @@ if __name__=='__main__':
     elif fnmatch.fnmatchcase(os.uname()[1], "PROMETHEUS"):  # Prometheus computer - use USB drive
         CARTESIUS_SCRATCH_USERNAME = 'christian'
         headdir = "/media/{}/DATA/data/hydrodynamics".format(CARTESIUS_SCRATCH_USERNAME)
-        odir = os.path.join(headdir, "CMEMS", branch)
+        # odir = os.path.join(headdir, "CMEMS", branch)
+        odir = os.path.join(headdir, branch)
         datahead_atmo = "/media/{}/OneTouch/storage/data".format(CARTESIUS_SCRATCH_USERNAME)
-        datahead_hydro = "/media/{}/OneTouch1/storage/data".format(CARTESIUS_SCRATCH_USERNAME)
+        # datahead_hydro = "/media/{}/OneTouch1/storage/data".format(CARTESIUS_SCRATCH_USERNAME)
+        datahead_hydro = "/media/{}/OneTouch/storage/data".format(CARTESIUS_SCRATCH_USERNAME)
         datahead = datahead_hydro
-        dirread_hydro = os.path.join(datahead, "hydrodynamics", "CMEMS", "2023-3D")
+        # dirread_hydro = os.path.join(datahead, "hydrodynamics", "CMEMS", "2023-3D")
+        dirread_hydro = os.path.join(datahead, "hydrodynamics", "SouthernOcean")
         dirread_atmo = os.path.join(datahead_atmo, "atmospherics", 'ERA5')
-        dirread_Stokes = os.path.join(datahead_atmo, 'ERA5_global_wind_waves/')
-        dirread_wind = os.path.join(datahead_atmo, 'ERA5_global_wind-only/')
+        dirread_Stokes = os.path.join(dirread_atmo, 'ERA5_global_wind_waves/')
+        dirread_wind = os.path.join(dirread_atmo, 'ERA5_global_wind-only/')
         computer_env = "Prometheus"
+        if DBG_MSG:
+            print("dirread_hydro: {}".format(dirread_hydro))
+            print("dirread_atmo: {}".format(dirread_atmo))
+            print("dirread_Stokes: {}".format(dirread_Stokes))
+            print("dirread_wind: {}".format(dirread_wind))
     else:
         headdir = "/var/scratch/experiments"
         odir = os.path.join(headdir, "CMEMS", branch)
@@ -927,18 +1086,18 @@ if __name__=='__main__':
 
     # ==== OLD ==== #
     # fieldset = create_CMEMS_fieldset(datahead=datahead, periodic_wrap=periodicFlag, chunk_level=chs, anisotropic_diffusion=diffuseFlag)
-    # ==== WORKING WHEN FILES MATCH ==== #
+    # ==== WORKING WHEN time dataypes in FILES MATCH ==== #
     # fieldset = create_CMEMS_fieldset(datahead=dirread_hydro, wavehead=dirread_atmo, periodic_wrap=periodicFlag, chunk_level=chs, anisotropic_diffusion=diffuseFlag)
     # ==== WORKING - DOES NO WAVES ==== #
-    fieldset = create_CMEMS_fieldset(datahead=dirread_hydro, periodic_wrap=periodicFlag, chunk_level=chs, anisotropic_diffusion=diffuseFlag)
+    fieldset = create_CMEMS_fieldset(datahead=dirread_hydro, periodic_wrap=periodicFlag, wavehead="", chunk_level=chs, anisotropic_diffusion=diffuseFlag)
     use_3D = hasattr(fieldset, "W")
     fieldset.add_constant('verbose_delete', True)
     fieldset.add_constant("east_lim", target_area[1])
     fieldset.add_constant("west_lim", target_area[0])
     fieldset.add_constant("north_lim", target_area[3])
     fieldset.add_constant("south_lim", target_area[2])
-    fieldset.add_constant("top", 0.0)
-    fieldset.add_constant("bottom", -3000.0)
+    fieldset.add_constant("top", zs)
+    fieldset.add_constant("bottom", ze)
     fieldset.add_constant("isThreeD", 1.0 if use_3D else -1.0)
     # =============== SETUP PARTICLES ================= #
     simStart = None
@@ -947,7 +1106,7 @@ if __name__=='__main__':
             continue
         else:
             if backwardSimulation:
-                simStart=f.grid.time_full[-1]
+                simStart = f.grid.time_full[-1]
             else:
                 simStart = f.grid.time_full[0]
             break
@@ -964,50 +1123,65 @@ if __name__=='__main__':
     # ==== ==== ==== ==== ==== #
     # lons, lats = generate_point_sources()
     lons, lats = generate_lines()
+    bathytopo_path = os.path.join("/media", "christian", "DATA", "Documents", "LifeStages", "RUG", "Research",
+                                  "SouthernOcean", "gebco_2026_n-5.0_s-65.0_w-15.0_e45.0.nc")
+    _, depths = interpolate_bathymetry_via_lonlat(lons, lats, bathytopo_path=bathytopo_path)
+
     # depths = np.ones((lons.shape[0], 1), dtype=lons.dtype)
-    depths = np.random.rand(lons.shape[0]) * 500.0
+    # depths = (np.random.rand(lons.shape[0]) * 10.0) + 10.0
+    # depths = (np.random.rand(lons.shape[0]) * 1.0) + 0.5
     lons1 = np.array(lons)
     lons2 = np.array(lons)
     lats1 = np.array(lats)
     lats2 = np.array(lats)
     depths1 = np.array(depths)
     depths2 = np.array(depths)
+
     print("N = {}. min. depth: {}, max. depth: {}".format(lons.shape[0], np.max(depths), np.min(depths)))
+
+    pclass = age_ptype[(compute_mode).lower()]
+    if interp_mode == 'rk45':
+        multiplier = -1.0 if backwardSimulation else 1.0
+        pclass = pclass.add_variable('next_dt', dtype=np.float32, initial=multiplier * datetime.timedelta(seconds=dt_seconds).total_seconds())
+
     if backwardSimulation:
         # lon=np.random.rand(start_N_particles, 1) * dlon + minlon, lat=np.random.rand(start_N_particles, 1) * dlat + minlat
         # ==== backward simulation ==== #
         if agingParticles:
             if repeatdtFlag:
-                pset = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons1, lat=lats1, depth=depths1, time=simStart, repeatdt=datetime.timedelta(minutes=repeatRateMinutes))
-                psetA = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons2, lat=lats2, depth=depths2, time=simStart)
+                pset = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons1, lat=lats1, depth=depths1, time=simStart, repeatdt=datetime.timedelta(minutes=repeatRateMinutes))
+                psetA = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons2, lat=lats2, depth=depths2, time=simStart)
                 pset.add(psetA)
             else:
-                pset = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons, lat=lats, depth=depths, time=simStart)
+                pset = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons1, lat=lats1, depth=depths1, time=simStart)
         else:
             if repeatdtFlag:
-                pset = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons1, lat=lats1, depth=depths1, time=simStart, repeatdt=datetime.timedelta(minutes=repeatRateMinutes))
-                psetA = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons2, lat=lats2, depth=depths2, time=simStart)
+                pset = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons1, lat=lats1, depth=depths1, time=simStart, repeatdt=datetime.timedelta(minutes=repeatRateMinutes))
+                psetA = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons2, lat=lats2, depth=depths2, time=simStart)
                 pset.add(psetA)
             else:
-                pset = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons, lat=lats, depth=depths, time=simStart)
+                pset = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons1, lat=lats1, depth=depths1, time=simStart)
     else:
         # ==== forward simulation ==== #
         if agingParticles:
             if repeatdtFlag:
-                pset = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons1, lat=lats1, depth=depths1, time=simStart, repeatdt=datetime.timedelta(minutes=repeatRateMinutes))
-                psetA = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons2, lat=lats2, depth=depths2, time=simStart)
+                pset = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons1, lat=lats1, depth=depths1, time=simStart, repeatdt=datetime.timedelta(minutes=repeatRateMinutes))
+                psetA = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons2, lat=lats2, depth=depths2, time=simStart)
                 pset.add(psetA)
             else:
-                pset = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons, lat=lats, depth=depths, time=simStart)
+                pset = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons1, lat=lats1, depth=depths1, time=simStart)
         else:
             if repeatdtFlag:
-                pset = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons1, lat=lats1, depth=depths1, time=simStart, repeatdt=datetime.timedelta(minutes=repeatRateMinutes))
-                psetA = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons2, lat=lats2, depth=depths2, time=simStart)
+                pset = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons1, lat=lats1, depth=depths1, time=simStart, repeatdt=datetime.timedelta(minutes=repeatRateMinutes))
+                psetA = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons2, lat=lats2, depth=depths2, time=simStart)
                 pset.add(psetA)
             else:
-                pset = ParticleSet(fieldset=fieldset, pclass=age_ptype[(compute_mode).lower()], lon=lons, lat=lats, depth=depths, time=simStart)
+                pset = ParticleSet(fieldset=fieldset, pclass=pclass, lon=lons1, lat=lats1, depth=depths1, time=simStart)
 
     total_particles=lons.shape[0] if not repeatdtFlag else lons1.shape[0]+int(math.ceil(time_in_days*24*60/repeatRateMinutes))*lons2.shape[0]
+    len_pset = len(pset)
+    if DBG_MSG:
+        print("ParticleSet length: {}".format(len_pset))
     print("Sampling concluded.")
 
     # =================================================== #
@@ -1104,7 +1278,7 @@ if __name__=='__main__':
     kernels += pset.Kernel(age_func, delete_cfiles=True)
     kernels += pset.Kernel(validate, delete_cfiles=True)
     if args.delete_particle:
-        kernels += pset.Kernel(DeleteParticle, delete_cfiles=True)
+        kernels += pset.Kernel(DeleteBCParticle, delete_cfiles=True)
     else:
         kernels += pset.Kernel(periodicBC, delete_cfiles=True)
 
@@ -1125,7 +1299,7 @@ if __name__=='__main__':
         #endtime = ostime.time()
         endtime = ostime.process_time()
 
-    if args.write_out:
+    if writeout:
         try:
             output_file.close()
         except:
